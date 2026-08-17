@@ -27,18 +27,18 @@ OPENAI_API_KEY=sk-xxx mini-claude-py --api-base https://api.openai.com/v1 --mode
 
 ## 文件结构
 
-| Python 文件 | 对应 TypeScript | 说明 |
-|-------------|----------------|------|
-| `agent.py` | `agent.ts` | Agent 核心循环、双后端、4 层压缩 |
-| `tools.py` | `tools.ts` | 10 个工具 + 5 种权限模式 |
-| `__main__.py` | `cli.ts` | CLI 入口与 REPL |
-| `ui.py` | `ui.ts` | 终端 UI（rich） |
-| `prompt.py` | `prompt.ts` | 系统提示词构造 |
-| `session.py` | `session.ts` | 会话管理 |
-| `memory.py` | `memory.ts` | 记忆系统 |
-| `skills.py` | `skills.ts` | 技能系统 |
-| `subagent.py` | `subagent.ts` | 子 Agent |
-| `frontmatter.py` | `frontmatter.ts` | YAML frontmatter 解析 |
+| Python 文件        | 对应 TypeScript    | 说明                   |
+| ---------------- | ---------------- | -------------------- |
+| `agent.py`       | `agent.ts`       | Agent 核心循环、双后端、4 层压缩 |
+| `tools.py`       | `tools.ts`       | 10 个工具 + 5 种权限模式     |
+| `__main__.py`    | `cli.ts`         | CLI 入口与 REPL         |
+| `ui.py`          | `ui.ts`          | 终端 UI（rich）          |
+| `prompt.py`      | `prompt.ts`      | 系统提示词构造              |
+| `session.py`     | `session.ts`     | 会话管理                 |
+| `memory.py`      | `memory.ts`      | 记忆系统                 |
+| `skills.py`      | `skills.ts`      | 技能系统                 |
+| `subagent.py`    | `subagent.ts`    | 子 Agent              |
+| `frontmatter.py` | `frontmatter.ts` | YAML frontmatter 解析  |
 
 ## 依赖
 

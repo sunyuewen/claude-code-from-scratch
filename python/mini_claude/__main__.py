@@ -229,7 +229,9 @@ Examples:
         sys.exit(0)
 
     permission_mode = _resolve_permission_mode(args)
-    model = args.model or os.environ.get("MINI_CLAUDE_MODEL", "claude-opus-4-6")
+    # model = args.model or os.environ.get("MINI_CLAUDE_MODEL", "claude-opus-4-6")
+    model = args.model or os.environ.get("MINI_CLAUDE_MODEL", "deepseek-v4-flash")
+
     api_base = args.api_base
 
     # Resolve API config
@@ -241,18 +243,20 @@ Examples:
         resolved_api_key = os.environ["OPENAI_API_KEY"]
         resolved_api_base = resolved_api_base or os.environ.get("OPENAI_BASE_URL")
         resolved_use_openai = True
-    elif os.environ.get("ANTHROPIC_API_KEY"):
+        print("Using OpenAI-compatible API.")
+    
+    #deepseek使用anthropic的后端代码
+    elif os.environ.get("DEEPSEEK_API_KEY") and os.environ.get("DEEPSEEK_BASE_URL"):
+        resolved_api_key = os.environ["DEEPSEEK_API_KEY"]
+        resolved_api_base = resolved_api_base or os.environ.get("DEEPSEEK_BASE_URL")
+        resolved_use_openai = False
+        print("Using Deepseek API.")
+    
+    elif os.environ.get("ANTHROPIC_API_KEY") and os.environ.get("ANTHROPIC_BASE_URL"):
         resolved_api_key = os.environ["ANTHROPIC_API_KEY"]
         resolved_api_base = resolved_api_base or os.environ.get("ANTHROPIC_BASE_URL")
         resolved_use_openai = False
-    elif os.environ.get("OPENAI_API_KEY"):
-        resolved_api_key = os.environ["OPENAI_API_KEY"]
-        resolved_api_base = resolved_api_base or os.environ.get("OPENAI_BASE_URL")
-        resolved_use_openai = True
-
-    if not resolved_api_key and api_base:
-        resolved_api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-        resolved_use_openai = True
+        print("Using Anthropic API.")
 
     if not resolved_api_key:
         print_error(
@@ -278,7 +282,9 @@ Examples:
         session_id = get_latest_session_id()
         if session_id:
             session = load_session(session_id)
+            print_info(f"Resuming session: {session_id}")
             if session:
+                print(f"Loaded session with {len(session.get('anthropicMessages', []))} Anthropic messages.")
                 agent.restore_session({
                     "anthropicMessages": session.get("anthropicMessages"),
                     "openaiMessages": session.get("openaiMessages"),

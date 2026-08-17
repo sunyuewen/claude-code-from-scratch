@@ -79,6 +79,7 @@ async def _with_retry(fn, max_retries: int = 3):
 # ─── Model context windows ──────────────────────────────────
 
 MODEL_CONTEXT = {
+    "deepseek-v4-flash": 128000,
     "claude-opus-4-6": 200000,
     "claude-sonnet-4-6": 200000,
     "claude-sonnet-4-20250514": 200000,
@@ -98,6 +99,8 @@ def _get_context_window(model: str) -> int:
 
 def _model_supports_thinking(model: str) -> bool:
     m = model.lower()
+    if "deepseek-v4-pro" in m:
+        return True
     if "claude-3-" in m or "3-5-" in m or "3-7-" in m:
         return False
     if "claude" in m and any(x in m for x in ("opus", "sonnet", "haiku")):
@@ -107,7 +110,7 @@ def _model_supports_thinking(model: str) -> bool:
 
 def _model_supports_adaptive_thinking(model: str) -> bool:
     m = model.lower()
-    return "opus-4-6" in m or "sonnet-4-6" in m
+    return "opus-4-6" in m or "sonnet-4-6" in m or "deepseek-v4-pro" in m
 
 
 def _get_max_output_tokens(model: str) -> int:
@@ -155,7 +158,8 @@ class Agent:
         self,
         *,
         permission_mode: str = "default",
-        model: str = "claude-opus-4-6",
+        # model: str = "claude-opus-4-6",
+        model: str = "deepseek-v4-flash",
         api_base: str | None = None,
         anthropic_base_url: str | None = None,
         api_key: str | None = None,
@@ -327,14 +331,17 @@ class Agent:
             try:
                 await self._mcp_manager.load_and_connect()
                 mcp_defs = self._mcp_manager.get_tool_definitions()
+                print("mcp_defs:",mcp_defs)
                 if mcp_defs:
                     self.tools = self.tools + mcp_defs
+                    print("tools:",self.tools)
             except Exception as e:
                 print(f"[mcp] Init failed: {e}", flush=True)
 
         self._aborted = False
         coro = self._chat_openai(user_message) if self.use_openai else self._chat_anthropic(user_message)
         self._current_task = asyncio.current_task()
+        print("_current_task:",self._current_task)
         try:
             await coro
         except asyncio.CancelledError:
@@ -842,13 +849,24 @@ IMPORTANT: When your plan is complete, you MUST call exit_plan_mode. Do NOT ask 
     # ─── Anthropic backend ───────────────────────────────────────
 
     async def _chat_anthropic(self, user_message: str) -> None:
+        # 1. 把用户消息追加到 Claude 格式的对话历史列表里
+        # self._anthropic_messages = 保存整个对话的列表
+        # role: "user" 表示这是用户说的话
+        # content: 消息内容
         self._anthropic_messages.append({"role": "user", "content": user_message})
+        # Auto-compact at turn boundary only — the last message is now plain
+        # user text, so the slice in _compact_anthropic won't sever a
+        # tool_use ↔ tool_result pair from the previous turn's tool execution.
+        # 2. 注释：只在回合边界自动压缩
+        # 最后一条消息是纯用户文本，
+        # 所以压缩时不会切断上一轮的工具调用（tool_use ↔ tool_result）
         # Auto-compact at turn boundary only — the last message is now plain
         # user text, so the slice in _compact_anthropic won't sever a
         # tool_use ↔ tool_result pair from the previous turn's tool execution.
         await self._check_and_compact()
 
         # Start async memory prefetch (non-blocking, fires once per user turn)
+        # 启动异步记忆预取（非阻塞，每个用户回合只触发一次）
         memory_prefetch: MemoryPrefetch | None = None
         if not self.is_sub_agent:
             sq = self._build_side_query()
@@ -866,11 +884,14 @@ IMPORTANT: When your plan is complete, you MUST call exit_plan_mode. Do NOT ask 
 
             # Consume memory prefetch if settled (non-blocking poll, zero-wait).
             # Append to last user message to maintain user/assistant alternation.
+            # 如果记忆预查询任务已经完成（settled），而且还没取用过
             if memory_prefetch and memory_prefetch.settled and not memory_prefetch.consumed:
                 memory_prefetch.consumed = True
                 try:
+                    # 拿到后台查到的记忆列表
                     memories = memory_prefetch.task.result()
                     if memories:
+                        # 把记忆格式化成一段文字，准备注入对话
                         injection_text = format_memories_for_injection(memories)
                         last = self._anthropic_messages[-1] if self._anthropic_messages else None
                         if last and last.get("role") == "user":

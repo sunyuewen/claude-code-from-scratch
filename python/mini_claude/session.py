@@ -33,10 +33,12 @@ def list_sessions() -> list[dict[str, Any]]:
     results = []
     for f in SESSION_DIR.glob("*.json"):
         try:
+            print(f"Loading session file: {f}")
             data = json.loads(f.read_text())
             if "metadata" in data:
                 results.append(data["metadata"])
         except Exception:
+            print(f"Error loading session file: {f}")
             pass
     return results
 
